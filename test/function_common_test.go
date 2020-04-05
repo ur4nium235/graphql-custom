@@ -1,7 +1,11 @@
 package main
 
 import (
+	"base/internal/base"
+	"base/internal/micro"
 	"base/internal/utils"
+	"fmt"
+	"github.com/graph-gophers/dataloader"
 	"testing"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,8 +25,23 @@ func TestGenHash(t *testing.T) {
 
 func BenchmarkGenHash(b *testing.B)  {
 	for test := 0; test < b.N; test++ {
-		var plainText string  = "vccorpadtechadmicrobigdataplatform"
+		plainText := "vccorpadtechadmicrobigdataplatform"
 		plainText += string(test)
 		utils.GenHash(plainText)
 	}
+}
+
+func TestGiftProd(t *testing.T)  {
+	config := &base.Config{}
+	err := utils.LoadConfig("configs/server.conf", config)
+
+	if err != nil {
+		utils.HandleErrorPrintf(err, "")
+	}
+
+	dataLoader := micro.InitGift(config.ApiGiftDev, config.ApiGiftProd)
+	keyList := make([]dataloader.Key, 2)
+	keyList[0] = dataloader.StringKey("123456789")
+	keyList[0] = dataloader.StringKey("695927798413266944")
+	fmt.Println(dataLoader.GetGiftCacheProd(nil, keyList))
 }
