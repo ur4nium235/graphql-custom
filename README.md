@@ -1,7 +1,9 @@
-Project base
+GraphQL Custom 
 ===
 
-> Dùng làm template cho các project golang  
+> Sử dụng graphql giảm thiểu lượng dữ liệu cần truyền qua mạng  
 
+- [x] dataloader 
+- [ ] graphql  
 
 
