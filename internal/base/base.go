@@ -1,6 +1,8 @@
 package base
 
 import (
+	log "base/internal"
+	"base/internal/micro"
 	"base/internal/utils"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -27,6 +29,10 @@ func InitServerBase(pconf string) (*BaseProject, error) {
 		 return nil, err
 	}
 
+	base.initLogHandle()
+
+	base.initMicro()
+
 	err = base.initRouters()
 
 	if err != nil {
@@ -44,10 +50,13 @@ func InitServerBaseDev(pconf string) (*BaseProject, error) {
 	base := &BaseProject{}
 
 	err := base.initConfig(pconf)
+	base.initLogHandle()
 
 	if err != nil {
 		return nil, err
 	}
+
+	base.initMicro()
 
 	err = base.initRouters()
 
@@ -56,6 +65,10 @@ func InitServerBaseDev(pconf string) (*BaseProject, error) {
 	}
 
 	return base, nil
+}
+
+func (base *BaseProject) initMicro()  {
+	base.gift = micro.InitGift(base.conf.ApiGiftDev, base.conf.ApiGiftProd)
 }
 
 func (base *BaseProject) initConfig(conf string) error {
@@ -76,12 +89,19 @@ func (base *BaseProject) initRouters() error {
 	}
 
 	base.router = gin.New()
+	base.router.Use(log.LoggerWithWriter(base.createFileLogRequests()))
+	base.router.Use(gin.Recovery())
 
 
 	base.router.ForwardedByClientIP = true
 	base.router.Use(favicon.New(pathFavicon))
 	base.router.GET("/", base.home)
 	base.router.GET("/healthy", base.healthy)
+	base.router.GET("/api/v2/gift", base.handleGiftV2)
+
+	//apiProd2 := base.router.Group("/api/v2")
+	//apiProd2.GET("/gift", base.handleGiftV2)
+
 	return err
 }
 

@@ -1,6 +1,7 @@
 package base
 
 import (
+	"base/internal/micro"
 	"github.com/aerospike/aerospike-client-go"
 	"github.com/gin-gonic/gin"
 )
@@ -19,6 +20,7 @@ type BaseProject struct {
 
 	//Cache
 	aeroClient *aerospike.Client
+	gift       *micro.MicroGift
 }
 
 type Config struct {
@@ -31,7 +33,8 @@ type Config struct {
 	// my sql
 	SqlKingHubHost string
 	SqlKingHubName string
-
-
-
+	ApiGiftProd    string
+	ApiGiftDev     string
+	LogRequest     string
+	LogHandler     string
 }

@@ -1,5 +1,5 @@
-package json
+package genjson
 
 type Base struct {
-	name string `json:"name"`
+	name string `genjson:"name"`
 }

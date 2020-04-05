@@ -4,9 +4,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/BurntSushi/toml"
+	"github.com/valyala/fasthttp"
 	"log"
 	"os"
 	"runtime"
+	"time"
 )
 
 /**
@@ -28,13 +30,35 @@ func LoadConfig(pathToFile string, config interface{}) error {
 	return nil
 }
 
-func HandleError(err interface{})  {
+func HandlePrintf(msg interface{}) {
+	log.Printf("[I] %v", msg)
+}
+
+func HandlePrintfMsg(err interface{}, msg string) {
+	log.Printf("[I] %v, %v", msg, err)
+}
+
+func HandleErrorPrintf(err interface{}, msg string) {
 	if err != nil {
 		_, fn, line, _ := runtime.Caller(1)
-		log.Printf("[E] %v %s:%d", err, fn, line)
+		if len(msg) > 0 {
+			log.Printf("[E] %v %s:%d \t %v", err, fn, line, msg)
+		} else {
+			log.Printf("[E] %v %s:%d", err, fn, line)
+		}
 	}
 }
 
+func HandleWarnPrintf(msg interface{}) {
+	log.Printf("[W] %v", msg)
+}
+
+func HandleErrorFatalf(err interface{}) {
+	if err != nil {
+		_, fn, line, _ := runtime.Caller(1)
+		log.Fatalf("[E] %v %s:%d", err, fn, line)
+	}
+}
 func GenHash(data string) string {
 	h := sha256.New()
 	h.Write([]byte(data))
@@ -42,4 +66,8 @@ func GenHash(data string) string {
 	return fmt.Sprintf("%x", bs)
 }
 
-
+func CreateFastClient() *fasthttp.Client {
+	return &fasthttp.Client{MaxConnsPerHost: 20000,
+		MaxIdleConnDuration: 10 * time.Second,
+	}
+}
