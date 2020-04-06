@@ -5,12 +5,12 @@ import (
 	"base/internal/utils"
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/graph-gophers/dataloader"
 	"github.com/patrickmn/go-cache"
 	"github.com/valyala/fasthttp"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -38,7 +38,7 @@ func InitGift(apiDev, apiProd string) *MicroGift {
 }
 
 func (mg *MicroGift) GetOpenGiftFeature(_ context.Context, userID string, isDev bool, listIds []string) map[string]bool {
-	utils.HandlePrintf("- GetOpenGiftFeature")
+	//utils.HandlePrintf("- GetOpenGiftFeature")
 	if len(userID) == 0 || len(listIds) == 0 {
 		return make(map[string]bool)
 	}
@@ -97,22 +97,49 @@ func (mg *MicroGift) GetOpenGiftFeature(_ context.Context, userID string, isDev 
 }
 
 func (mg *MicroGift) GetGiftCacheProd(_ context.Context, keys dataloader.Keys) []*dataloader.Result {
-	utils.HandlePrintf("GetGiftCacheProd")
 	var results []*dataloader.Result
 
-	if len(keys) < 2 {
-		utils.HandleWarnPrintf("GetGiftCacheProd len(keys) < 2. Not found userID or listID")
+	reqMap := make(map[string][]string, 0)
+
+	// map: key = userID - value = []string{postID}
+	for _, obj := range keys {
+		tmp := strings.Split(obj.String(), ":")
+		// nếu không có userID => bỏ qua
+		if len(tmp) < 2 {
+			utils.HandleWarnPrintf("GetOpenGiftFeatureProdFunc len(key) < 2. Not found userID or postID")
+			continue
+		}
+		// tồn tại userID trong map => thêm tiếp postID vào
+		if val, ok := reqMap[tmp[0]]; ok {
+			postIDs := append(val, tmp[1])
+			reqMap[tmp[0]] = postIDs
+		} else { // chưa có userID trong map => thêm mới
+			reqMap[tmp[0]] = []string{tmp[1]}
+		}
 	}
 
-	userID := keys.Keys()[0]
-	listID := keys.Keys()[1:]
-	tmp := mg.GetOpenGiftFeature(context.TODO(), userID, false, listID)
+	responseMap := make(map[string]map[string]bool)
 
-	fmt.Println("GetGiftCacheProd", tmp)
+	// map: key userID - value = map[postID]bool
+	//O(total_userID)
+	for userID, postIDs := range reqMap {
+		// với mỗi userID có listPostID, call api một lần
+		// TODO cần sử dụng goroutine?
+		responseMap[userID] = mg.GetOpenGiftFeature(context.TODO(), userID, false, postIDs)
+	}
 
-	for _, obj := range listID {
-		if _, ok := tmp[obj]; ok {
-			results = append(results, &dataloader.Result{Data: tmp[obj]})
+	// O(len(keys))
+	for _, obj := range keys {
+		key := strings.Split(obj.String(), ":")
+		userID, postID := key[0], key[1]
+		// O(1)
+		// map: key userID - value = map[postID]bool
+		if tmp, ok := responseMap[userID]; ok {
+			if val, ok := tmp[postID]; ok {
+				results = append(results, &dataloader.Result{Data: val})
+			} else {
+				results = append(results, &dataloader.Result{Data: 0})
+			}
 		} else {
 			results = append(results, &dataloader.Result{Data: 0})
 		}
@@ -121,22 +148,49 @@ func (mg *MicroGift) GetGiftCacheProd(_ context.Context, keys dataloader.Keys) [
 }
 
 func (mg *MicroGift) GetGiftCacheDev(_ context.Context, keys dataloader.Keys) []*dataloader.Result {
-	utils.HandlePrintf("GetGiftCacheDev")
 	var results []*dataloader.Result
 
-	if len(keys) < 2 {
-		utils.HandleWarnPrintf("GetGiftCacheDev len(keys) < 2. Not found userID or listID")
-	}
+	reqMap := make(map[string][]string, 0)
 
-	userID := keys.Keys()[0]
-	listID := keys.Keys()[1:]
-	resp := mg.GetOpenGiftFeature(context.TODO(), userID, false, listID)
+	// map: key = userID - value = []string{postID}
 	for _, obj := range keys {
-		if obj.String() == userID {
+		tmp := strings.Split(obj.String(), ":")
+		// nếu không có userID => bỏ qua
+		if len(tmp) < 2 {
+			utils.HandleWarnPrintf("getOpenGiftFeatureDevFunc len(key) < 2. Not found userID or postID")
 			continue
 		}
-		if _, ok := resp[obj.String()]; ok {
-			results = append(results, &dataloader.Result{Data: resp[obj.String()]})
+		// tồn tại userID trong map => thêm tiếp postID vào
+		if val, ok := reqMap[tmp[0]]; ok {
+			postIDs := append(val, tmp[1])
+			reqMap[tmp[0]] = postIDs
+		} else { // chưa có userID trong map => thêm mới
+			reqMap[tmp[0]] = []string{tmp[1]}
+		}
+	}
+
+	responseMap := make(map[string]map[string]bool)
+
+	// map: key userID - value = map[postID]bool
+	// O(total_userID)
+	for userID, postIDs := range reqMap {
+		// với mỗi userID có listPostID, call api một lần
+		// TODO cần sử dụng goroutine?
+		responseMap[userID] = mg.GetOpenGiftFeature(context.TODO(), userID, true, postIDs)
+	}
+
+	// O(len(keys))
+	for _, obj := range keys {
+		key := strings.Split(obj.String(), ":")
+		userID, postID := key[0], key[1]
+		// O(1)
+		// map: key = userID - value = map[postID]bool
+		if tmp, ok := responseMap[userID]; ok {
+			if val, ok := tmp[postID]; ok {
+				results = append(results, &dataloader.Result{Data: val})
+			} else {
+				results = append(results, &dataloader.Result{Data: 0})
+			}
 		} else {
 			results = append(results, &dataloader.Result{Data: 0})
 		}

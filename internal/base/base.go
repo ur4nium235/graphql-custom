@@ -98,6 +98,7 @@ func (base *BaseProject) initRouters() error {
 	base.router.GET("/", base.home)
 	base.router.GET("/healthy", base.healthy)
 	base.router.GET("/api/v2/gift", base.handleGiftV2)
+	base.router.GET("/api/v2/dev/gift", base.handleGiftV2)
 
 	//apiProd2 := base.router.Group("/api/v2")
 	//apiProd2.GET("/gift", base.handleGiftV2)
